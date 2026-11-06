@@ -1,4 +1,5 @@
 """多智能体近端策略优化训练：各台电解槽共享同一个策略网络，评价网络仅训练时使用。"""
+import os
 import time
 import numpy as np
 import torch
@@ -9,7 +10,7 @@ torch.set_num_threads(6)
 
 
 class Actor(nn.Module):
-    """策略网络（部署在每台电解槽本地）：输入 6 个本地观测，输出负荷率。"""
+    """策略网络（部署在每台电解槽本地）：输入 7 个本地观测，输出负荷率。"""
 
     def __init__(self, obs_dim=ClusterEnv.OBS_DIM, hid=64):
         super().__init__()
@@ -34,7 +35,7 @@ class Critic(nn.Module):
         return self.net(s).squeeze(-1)
 
 
-def train(iters=400, E=64, seed=0, out="actor.pt"):
+def train(iters=400, E=64, seed=0, out_dir="."):
     cfg = Config(seed=0)
     N = cfg.n_el
     torch.manual_seed(seed)
@@ -62,7 +63,7 @@ def train(iters=400, E=64, seed=0, out="actor.pt"):
             o2, r, done, info = env.step(a.numpy())
             O.append(o); S.append(s); A.append(a.numpy()); LP.append(lp.numpy()); R.append(r)
             o = o2
-        O, S, A, LP, R = map(np.array, (O, S, A, LP, R))   # O:(T,E,N,6) S:(T,E,ds) R:(T,E)
+        O, S, A, LP, R = map(np.array, (O, S, A, LP, R))   # O:(T,E,N,7) S:(T,E,ds) R:(T,E)
         with torch.no_grad():
             V = critic(torch.from_numpy(S)).numpy()
         adv = np.zeros_like(R)
@@ -97,12 +98,16 @@ def train(iters=400, E=64, seed=0, out="actor.pt"):
         log.append(ep_ret)
         if it % 10 == 0:
             print(f"iter {it:4d}  日收益(缩放) {ep_ret:8.2f}  std {actor.log_std.exp().item():.3f}  {time.time() - t0:6.0f}s", flush=True)
-    torch.save(actor.state_dict(), out)
-    np.save(out.replace(".pt", "_log.npy"), np.array(log))
+    torch.save(actor.state_dict(), os.path.join(out_dir, f"policy_s{seed}.pt"))
+    np.save(os.path.join(out_dir, f"curve_s{seed}.npy"), np.array(log))
     return actor
 
 
 if __name__ == "__main__":
+    # 用法 python train.py <轮数> <种子> <输出目录>，例如 python train.py 1500 0 runs/round3
     import sys
+    sys.stdout.reconfigure(encoding="utf-8")
     seed = int(sys.argv[2]) if len(sys.argv) > 2 else 0
-    train(iters=int(sys.argv[1]) if len(sys.argv) > 1 else 400, seed=seed, out=f"actor_s{seed}.pt")
+    out_dir = sys.argv[3] if len(sys.argv) > 3 else "."
+    os.makedirs(out_dir, exist_ok=True)
+    train(iters=int(sys.argv[1]) if len(sys.argv) > 1 else 400, seed=seed, out_dir=out_dir)

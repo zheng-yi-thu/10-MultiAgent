@@ -1,0 +1,14 @@
+种子 0 验证日收益 26439.4
+种子 1 验证日收益 26342.2
+种子 2 验证日收益 26030.0
+选用种子 0
+均分规则: revenue=20525.548, h2=15841.542, starts=68.700, ess_thru=5.766, curtail=5.825, shed=0.012, soc_min=0.282, soc_max=0.950, step_ms=0.054
+效率优先规则: revenue=24163.583, h2=15927.041, starts=43.850, ess_thru=7.410, curtail=5.883, shed=0.017, soc_min=0.282, soc_max=0.950, step_ms=0.068
+完美预测混合整数规划: revenue=26812.052, h2=16069.121, starts=20.650, ess_thru=7.818, curtail=5.880, shed=0.065, soc_min=0.112, soc_max=0.950, step_ms=0.000
+本发明: revenue=22728.159, h2=15333.827, starts=21.150, ess_thru=14.643, curtail=8.137, shed=0.158, soc_min=0.148, soc_max=0.950, step_ms=0.191
+混合整数规划每天求解耗时 11.69 s
+[10台] 均分规则: revenue=18275.199, h2=16493.676, starts=89.100, ess_thru=4.734, curtail=1.757, shed=0.041, soc_min=0.214, soc_max=0.950
+[10台] 效率优先规则: revenue=23017.437, h2=16658.562, starts=55.450, ess_thru=7.099, curtail=1.777, shed=0.060, soc_min=0.214, soc_max=0.950
+[10台] 本发明: revenue=19485.964, h2=16122.260, starts=28.600, ess_thru=15.771, curtail=3.717, shed=0.335, soc_min=0.105, soc_max=0.950
+[通信中断] 本发明: revenue=20931.968, h2=15148.552, starts=20.400, ess_thru=14.845, curtail=8.918, shed=0.234, soc_min=0.050, soc_max=0.950
+[控制器故障] 本发明: revenue=23752.918, h2=14693.104, starts=16.650, ess_thru=14.000, curtail=11.228, shed=0.080, soc_min=0.148, soc_max=0.950

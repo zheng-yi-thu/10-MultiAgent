@@ -21,6 +21,9 @@ class Config:
         self.eta = 0.95             # 储能单向效率
         self.soc_hard = (0.05, 0.95)
         self.soc_safe = (0.15, 0.85)  # 安全规则触发阈值
+        self.dis_trig = 0.65        # 放电功率超过额定值的该比例时强制降负荷，为风电骤降留放电余量
+        self.ch_trig = 0.8          # 充电功率超过额定值的该比例时强制升负荷
+        self.force_step = 0.1       # 每步强制调节的负荷率幅度，取小值以免各台同时大幅调节造成过调
         # 经济参数（元）
         self.price_h2 = 2.0         # 氢气价值 元/Nm3
         self.cost_ess = 100.0       # 储能吞吐成本 元/MWh
@@ -118,12 +121,12 @@ class ClusterEnv:
         c = self.cfg
         x_req = np.clip(x_req, 0, 1)
         soc, p_ess = info[..., 0], info[..., 1]
-        # 储能电量过低且仍在放电，或放电功率接近额定值，强制降负荷；充电侧同理强制升负荷
-        low = ((soc < c.soc_safe[0]) & (p_ess < 0)) | (p_ess < -0.8 * c.ess_p)
-        high = ((soc > c.soc_safe[1]) & (p_ess > 0)) | (p_ess > 0.8 * c.ess_p)
+        # 储能电量过低且仍在放电，或放电功率超过触发值，强制降负荷；充电侧同理强制升负荷
+        low = ((soc < c.soc_safe[0]) & (p_ess < 0)) | (p_ess < -c.dis_trig * c.ess_p)
+        high = ((soc > c.soc_safe[1]) & (p_ess > 0)) | (p_ess > c.ch_trig * c.ess_p)
         run = self.x > 0   # 强制调节只作用于正在运行的电解槽，不强制启动热备电解槽
-        x_req = np.where(low & run, np.minimum(x_req, self.x - c.ramp), x_req)
-        x_req = np.where(high & run, np.maximum(x_req, self.x + c.ramp), x_req)
+        x_req = np.where(low & run, np.minimum(x_req, self.x - c.force_step), x_req)
+        x_req = np.where(high & run, np.maximum(x_req, self.x + c.force_step), x_req)
         x_new = np.clip(x_req, self.x - c.ramp, self.x + c.ramp)
         x_new = np.clip(x_new, 0, 1)
         # 低于最低负荷则转入热备

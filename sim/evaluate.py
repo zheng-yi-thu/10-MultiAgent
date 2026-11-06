@@ -1,4 +1,9 @@
-"""在测试日上对比各方法，并做扩容、通信中断、控制器故障测试。结果保存为 results.npz 与 results.txt。"""
+"""在测试日上对比各方法，并做扩容、通信中断、控制器故障测试。结果保存在训练输出目录下的 eval.txt 与 eval_data.npz。
+
+用法 python evaluate.py <训练输出目录>，例如 python evaluate.py runs/round3
+"""
+import os
+import sys
 import time
 import numpy as np
 import torch
@@ -61,23 +66,22 @@ def milp_policy(cfg, wind):
     return (lambda env, o, t: sched[t]), np.mean(times)
 
 
-def main():
+def main(run_dir):
     cfg = Config()
     # 在验证日（与测试日不重合）上挑选训练效果最好的随机种子
     val_wind = wind_profiles(10, cfg.p_wind_cap, 777)
-    best = None
+    best, lines = None, []
     for s in range(3):
         a = Actor()
-        a.load_state_dict(torch.load(f"actor_s{s}.pt"))
+        a.load_state_dict(torch.load(os.path.join(run_dir, f"policy_s{s}.pt")))
         v = summary(run(cfg, val_wind, rl_policy(a)))["revenue"]
-        print(f"种子 {s} 验证日收益 {v:.1f}")
+        lines.append(f"种子 {s} 验证日收益 {v:.1f}"); print(lines[-1], flush=True)
         if best is None or v > best[0]:
             best = (v, s, a)
     actor = best[2]
-    torch.save(actor.state_dict(), "actor.pt")
-    print(f"选用种子 {best[1]}")
+    lines.append(f"选用种子 {best[1]}"); print(lines[-1], flush=True)
     wind = wind_profiles(TEST_DAYS, cfg.p_wind_cap, TEST_SEED)
-    res, lines = {}, []
+    res = {}
     mp, milp_t = milp_policy(cfg, wind)
     methods = {
         "均分规则": lambda env, o, t: rule_policy(env, "equal"),
@@ -114,10 +118,11 @@ def main():
     r = run(cfg, wind, rl_policy(actor), dead_hook)
     lines.append("[控制器故障] 本发明: " + ", ".join(f"{k}={v:.3f}" for k, v in summary(r).items()))
 
-    open("results.txt", "w", encoding="utf-8").write("\n".join(lines))
+    open(os.path.join(run_dir, "eval.txt"), "w", encoding="utf-8").write("\n".join(lines))
     print("\n".join(lines))
-    np.savez("results.npz", wind=wind, **{f"{k}__{f}": v[f] for k, v in res.items() for f in ["x", "p_ess", "soc", "p_el", "h2", "starts"]})
+    np.savez(os.path.join(run_dir, "eval_data.npz"), wind=wind, **{f"{k}__{f}": v[f] for k, v in res.items() for f in ["x", "p_ess", "soc", "p_el", "h2", "starts"]})
 
 
 if __name__ == "__main__":
-    main()
+    sys.stdout.reconfigure(encoding="utf-8")
+    main(sys.argv[1] if len(sys.argv) > 1 else ".")

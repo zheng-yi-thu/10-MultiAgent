@@ -6,9 +6,12 @@ from env import DT, T_STEPS, h2_rate
 
 
 def rule_policy(env, mode):
-    """集中式规则：中央控制器测得风电功率，按储能电量修正后得到集群目标功率，再分给各台电解槽。"""
+    """集中式规则：中央控制器测得风电功率，按储能电量修正后得到集群目标功率，再分给各台电解槽。
+
+    控制器只能拿到上一步的风电实测值，与智能体的信息时效一致。
+    """
     c, N = env.cfg, env.cfg.n_el
-    p_wind = env.wind[:, env.t]
+    p_wind = env.wind[:, max(env.t - 1, 0)]
     target = p_wind + 2.0 * (env.soc - 0.5) * c.ess_p
     target = np.clip(target, 0, N * c.p_el_rated)
     if mode == "equal":      # 能开的都开，平均分配
